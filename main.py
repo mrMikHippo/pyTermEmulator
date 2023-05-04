@@ -8,9 +8,9 @@ MINORV = 1
 def command_processor(cmddb):
 	while True:
 		cmd = cmddb.get()
-		# if cmd:
-			# print(f"You have entered: {cmd}")
-		if cmd == 'e':
+		if cmd:
+			print(f"You have entered: {cmd}\n> ", end='')
+		if cmd == 'q':
 			print("Q has reached")
 			break
 		if cmd == 'quit':

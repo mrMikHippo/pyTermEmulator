@@ -11,4 +11,6 @@ class CmdDb:
     
     def get(self):
         with self._lock:
-            return self._cmd
+            cmd = self._cmd
+            self._cmd = str()
+            return cmd
