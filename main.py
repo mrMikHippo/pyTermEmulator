@@ -30,12 +30,17 @@ if __name__ == "__main__":
 	stop_threads = False
 	t1 = Thread(target=temu.run, args=(lambda : stop_threads, ))
 	t2 = Thread(target=command_processor, args=(cmddb, ))
+
 	t1.start()
 	t2.start()
 
-	t2.join()
+	try:
+		t2.join()
+	except KeyboardInterrupt: # Catch Ctrl+C
+		print("exiting...")
+
 	# Kill TerminalEmulator thread
-	stop_threads = True	
+	stop_threads = True
 	t1.join()
 
 	exit(0)
