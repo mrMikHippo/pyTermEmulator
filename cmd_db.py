@@ -9,6 +9,7 @@ class CmdDb:
         self._buffer = str()
 
     def update(self, line) -> None:
+        """ Write new command """
         with self._lock:
             self._cmd = line
             self._history.append(line)
@@ -16,12 +17,14 @@ class CmdDb:
             self._buffer = str()
 
     def get(self) -> str:
+        """ Get current command """
         with self._lock:
             cmd = self._cmd
             self._cmd = str()
             return cmd
 
     def getPrevious(self, cmd_to_save) -> str:
+        """ Get Previous command from history """
         if self._history_position == len(self._history):
             self._buffer = cmd_to_save
 
@@ -30,6 +33,7 @@ class CmdDb:
             return self._history[self._history_position]
 
     def getNext(self) -> str:
+        """ Get Next command from history """
         if self._history_position < len(self._history):
             self._history_position += 1
             if not self._history_position == len(self._history):
