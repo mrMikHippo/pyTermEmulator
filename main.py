@@ -1,46 +1,37 @@
 from term import TermEmulator
-from threading import Thread
-from cmd_db import CmdDb
+import time
 
 MAJORV = 0
-MINORV = 1
+MINORV = 2
 
-def command_processor(cmddb):
-	while True:
-		cmd = cmddb.get()
-		if cmd:
-			print(f"You have entered: {cmd}\n> ", end='')
-		if cmd == 'q':
-			print("Q has reached")
-			break
-		if cmd == 'quit':
-			print("Quit has reached")
-			break
+def printSomethingBig():
+	print("------------------------<")
+	print("What a life!")
+	print("------------------------>")
 
+def main():
 
-
-if __name__ == "__main__":
-	print(f"pyTermEmulator v{MAJORV}.{MINORV} (2023)")
-
-	cmddb = CmdDb()
-
-	name = "TerminalEmulator"
-	temu = TermEmulator(name, cmddb)
-
-	stop_threads = False
-	t1 = Thread(target=temu.run, args=(lambda : stop_threads, ))
-	t2 = Thread(target=command_processor, args=(cmddb, ))
-
-	t1.start()
-	t2.start()
+	termemu = TermEmulator(verbose = True)
+	print(termemu.getVersion())
+	termemu.run()
 
 	try:
-		t2.join()
-	except KeyboardInterrupt: # Catch Ctrl+C
-		print("exiting...")
+		while True:
+			cmd = termemu.getCommand()
+			if cmd == 'q':
+				break
+			elif cmd == 'p':
+				printSomethingBig()
+			else:
+				print(f"Error: Unknown command '{cmd}'")
+			# print("Main thread")
+			# time.sleep(0.5)
+	except KeyboardInterrupt: pass
+	finally:
+		print("Exiting...")
+		termemu.stop()
+		print("Done")
 
-	# Kill TerminalEmulator thread
-	stop_threads = True
-	t1.join()
+if __name__ == "__main__":
 
-	exit(0)
+	main()

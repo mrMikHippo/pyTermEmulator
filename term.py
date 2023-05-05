@@ -1,11 +1,83 @@
 import termios, fcntl, sys, os
+from threading import Thread, Event, Lock
+
+MAJORV = 0
+MINORV = 2
+
+class CmdDb:
+    def __init__(self):
+        self._cmd = str()
+        self._lock = Lock()
+        self._history = list()
+        self._history_position = 0 # or m.b. current_history_position
+        self._buffer = str()
+        self._run_event = Event()
+        # self._run_event.set()
+
+    def update(self, line) -> None:
+        """ Write new command """
+        with self._lock:
+            self._cmd = line
+            self._history.append(line)
+            self._history_position = len(self._history)
+            self._buffer = str()
+            self._run_event.set()
+
+    def get(self) -> str:
+        """ Get current command """
+        while not self._run_event.is_set():
+            pass
+        with self._lock:
+            cmd = self._cmd
+            self._cmd = str()
+            self._run_event.clear()
+            return cmd
+
+    def getPrevious(self, cmd_to_save) -> str:
+        """ Get Previous command from history """
+        if self._history_position == len(self._history):
+            self._buffer = cmd_to_save
+
+        if self._history_position > 0:
+            self._history_position -= 1
+            return self._history[self._history_position]
+
+    def getNext(self) -> str:
+        """ Get Next command from history """
+        if self._history_position < len(self._history):
+            self._history_position += 1
+            if not self._history_position == len(self._history):
+                return self._history[self._history_position]
+        return self._buffer
 
 class TermEmulator:
 
-    def __init__(self, name, cmd_db, prompt = '> '):
-        self._name = name
-        self._cmd_db = cmd_db
+    def __init__(self, prompt = '> ', verbose = False):
+        self._name = "pyTermEmulator"
+        self._cmd_db = CmdDb()
         self._prompt = prompt
+        self._verbose = verbose
+        self._run_event = Event()
+        self._run_event.set()
+        self._t1 = Thread(target=self._run, args=(self._run_event, ))
+
+    def getVersion(self):
+        return f"{self._name} v{MAJORV}.{MINORV} (2023)"
+
+    def run(self):
+        if self._verbose:
+            print("Run", self._name)
+        self._t1.start()
+
+    def stop(self):
+        self._run_event.clear()
+        self._t1.join()
+        if self._verbose:
+            print(self._name, "successfully stopped")
+
+    def getCommand(self):
+        self._printPromptFlush()
+        return self._cmd_db.get()
 
     def _flush(self):
         sys.stdout.flush()
@@ -59,10 +131,10 @@ class TermEmulator:
         self._write(line)
         sys.stdout.flush()
 
+    def _run(self, run_event):
 
-    def run(self, stop):
-
-        print(self._name, "started")
+        if self._verbose:
+            print(self._name, "loop started")
 
         fd = sys.stdin.fileno()
 
@@ -74,14 +146,12 @@ class TermEmulator:
         oldflags = fcntl.fcntl(fd, fcntl.F_GETFL)
         fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
 
-        self._printPrompt()
+        # self._printPrompt()
 
         cmd = str()
         cursor_pos = 0
         try:
-            while True:
-                if stop():
-                    break
+            while run_event.is_set():
                 try:
                     c = sys.stdin.read(1)
 
@@ -157,15 +227,26 @@ class TermEmulator:
                         if c == '\n':
                             self._cmd_db.update(cmd)
                             cmd = str()
-                            self._printPromptFlush()
+                            # self._printPromptFlush()
                             cursor_pos = 0
                         else:
                             cmd = cmd[:cursor_pos] + c + cmd[cursor_pos:]
                             cursor_pos += 1
-                        if c == 'q':
-                            self._cmd_db.update(c)
+                        # if c == 'q':
+                            # self._cmd_db.update(c)
+                except TypeError:
+                    if self._verbose:
+                        sys.stdout.write("TypeError!\n")
+                        sys.stdout.flush()
+                    cmd = str()
+                    cursor_pos = 0
+                    self._printPromptFlush()
                 except IOError: pass
+                # except KeyboardInterrupt:
+                    # break
         finally:
             termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
             fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
-            print(self._name, "ended")
+
+        if self._verbose:
+            print(self._name, "loop ended")
