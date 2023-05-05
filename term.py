@@ -45,11 +45,11 @@ class TermEmulator:
         # sys.stdout.write('\x1b[2K') # erase entire line
         sys.stdout.write(f'\x1b[{len(self._prompt)+1}G')
         sys.stdout.write('\x1b[0K')
-        sys.stdout.flush()
+        # sys.stdout.flush()
 
     def _clearToEndOfLine(self):
         sys.stdout.write('\x1b[0K')
-        sys.stdout.flush()
+        # sys.stdout.flush()
 
 
     def run(self, stop):
@@ -70,7 +70,6 @@ class TermEmulator:
 
         cmd = str()
         cursor_pos = 0
-
         try:
             while True:
                 if stop():
@@ -82,18 +81,18 @@ class TermEmulator:
                         c = sys.stdin.read(2)
                         # print("Got", c)
                         if c == '[A': # Up arrow pressed
-                            line = self._cmd_db.getPrevious()
-                            if line:
+                            cmd = self._cmd_db.getPrevious(cmd)
+                            if cmd:
                                 self._clearLine()
-                                sys.stdout.write(line)
-                                cursor_pos = len(line)
+                                sys.stdout.write(cmd)
+                                cursor_pos = len(cmd)
                                 sys.stdout.flush()
 
                         elif c == '[B': # Down arrow pressed
-                            line = self._cmd_db.getNext()
+                            cmd = self._cmd_db.getNext()
                             self._clearLine()
-                            sys.stdout.write(line)
-                            cursor_pos = len(line)
+                            sys.stdout.write(cmd)
+                            cursor_pos = len(cmd)
                             sys.stdout.flush()
 
                         elif c == '[C': # Right arrow pressed, Move cursor right
@@ -120,7 +119,7 @@ class TermEmulator:
                             self._clearToEndOfLine()
                             cursor_pos -= 1
                             sys.stdout.write(cmd[cursor_pos:])
-                            sys.stdout.flush()
+                            # sys.stdout.flush()
                             self._moveCursorLeft(len(cmd) - cursor_pos)
                     elif c:
                         # print("Got", repr(c))
