@@ -1,24 +1,5 @@
 import termios, fcntl, sys, os
 
-# - Position the Cursor:
-#   \033[<L>;<C>H
-#      Or
-#   \033[<L>;<C>f
-#   puts the cursor at line L and column C.
-# - Move the cursor up N lines:
-#   \033[<N>A
-# - Move the cursor down N lines:
-#   \033[<N>B
-# - Move the cursor forward N columns:
-#   \033[<N>C
-# - Move the cursor backward N columns:
-#   \033[<N>D
-
-# - Clear the screen, move to (0,0):
-#   \033[2J
-# - Erase to end of line:
-#   \033[K
-
 class TermEmulator:
 
     def __init__(self, name, cmd_db, prompt = '> '):
@@ -26,15 +7,20 @@ class TermEmulator:
         self._cmd_db = cmd_db
         self._prompt = prompt
 
+    def _flush(self):
+        sys.stdout.flush()
+
     def _moveCursorLeft(self, times = 1):
-        sys.stdout.write(f'\033[{times}D')
+        if times:
+            sys.stdout.write(f'\x1b[{times}D')
 
     def _moveCursorLeftFlush(self, times = 1):
         self._moveCursorLeft(times)
         sys.stdout.flush()
 
     def _moveCursorRight(self, times = 1):
-        sys.stdout.write(f'\033[{times}C')
+        if times:
+            sys.stdout.write(f'\x1b[{times}C')
 
     def _moveCursorRightFlush(self, times = 1):
         self._moveCursorRight(times)
@@ -70,7 +56,7 @@ class TermEmulator:
         sys.stdout.write(line)
 
     def _writeFlush(self, line):
-        sys.stdout.write(line)
+        self._write(line)
         sys.stdout.flush()
 
 
@@ -100,15 +86,14 @@ class TermEmulator:
                     c = sys.stdin.read(1)
 
                     if c == '\x1b':
+                        # print("Got", repr(c))
                         c = sys.stdin.read(2)
-                        # print("Got", c)
                         if c == '[A': # Up arrow pressed
                             cmd = self._cmd_db.getPrevious(cmd)
                             if cmd:
                                 self._clearLine()
                                 self._writeFlush(cmd)
                                 cursor_pos = len(cmd)
-
                         elif c == '[B': # Down arrow pressed
                             cmd = self._cmd_db.getNext()
                             self._clearLine()
@@ -124,14 +109,30 @@ class TermEmulator:
                                 cursor_pos -= 1
                                 self._moveCursorLeftFlush()
                         elif c == '[H': # Home key pressed
-                            if cursor_pos > 0:
-                                self._moveCursorLeftFlush(cursor_pos)
-                                cursor_pos = 0
+                            self._moveCursorLeftFlush(cursor_pos)
+                            cursor_pos = 0
                         elif c == '[F': # End key pressed
                             cmd_length = len(cmd)
                             if cursor_pos < cmd_length:
                                 self._moveCursorRightFlush(cmd_length - cursor_pos)
                                 cursor_pos = cmd_length
+                        elif c == '[1': # Ctrl+key pressed
+                            c = sys.stdin.read(3)
+                            if c == ';5D': # left key
+                                # TODO
+                                pass
+                            elif c == ';5C': # right key
+                                # TODO
+                                pass
+                        elif c == '[3': # Delete key pressed
+                            c = sys.stdin.read(1) # Read ~
+                            if cursor_pos < len(cmd):
+                                self._clearToEndOfLine()
+                                cmd = cmd[:cursor_pos] + cmd[cursor_pos+1:]
+                                self._write(cmd[cursor_pos:])
+                                self._moveCursorLeft(len(cmd))
+                                self._moveCursorRightFlush(cursor_pos)
+
                     elif c == '\x7f': # Backspace
                         if cursor_pos > 0:
                             self._moveCursorLeft()
